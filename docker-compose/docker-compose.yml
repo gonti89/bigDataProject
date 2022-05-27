@@ -43,7 +43,7 @@ services:
       CLICKHOUSE_PASSWORD: clickpass
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
-      - ./clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ../clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
   
   metabase:
     image: metabase-clickhouse-driver
@@ -55,4 +55,4 @@ services:
     environment:
       MB_DB_FILE: /metabase-data/metabase.db
     volumes:
-    - ./metabase/data:/metabase-data
+    - ../metabase/data:/metabase-data
