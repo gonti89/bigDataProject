@@ -1,0 +1,2 @@
+FROM  dalibo/pandocker 
+RUN apt-get update -y && apt-get install texlive-lang-polish

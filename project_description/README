@@ -1,0 +1,19 @@
+#Example Command
+
+##docx to markdown
+## --extract-media : save images from docx, but only images not native charts
+ sudo docker run  --rm  -u `id -u`:`id -g` --volume $(pwd):/data  pandoc/core  --extract-media=. -t markdown -f docx  in.docx -o out.md
+
+##markdown to pdf
+sudo docker run --rm -u `id -u`:`id -g` --volume "`pwd`:/pandoc"  dalibo/pandocker  in.md -o out.pdf --template eisvogel
+
+## markdown to pdf with setting polish lang
+sudo docker build --tag=pandocker-pl . # docker file defined in main directory
+sudo docker run --rm -u `id -u`:`id -g` --volume "`pwd`:/pandoc"  pandocker-pl  in.md -o out.pdf --template eisvogel -V lang=pl
+
+#Useful links
+https://github.com/Wandmalfarbe/pandoc-latex-template/tree/master/examples # nice simple examples
+https://hub.docker.com/r/dalibo/pandocker
+https://github.com/dalibo/pandocker
+https://www.uv.es/wikibase/doc/cas/pandoc_manual_instalado.wiki
+https://pandoc.org/MANUAL.html
