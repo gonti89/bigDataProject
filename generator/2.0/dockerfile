@@ -1,0 +1,21 @@
+FROM python:3.9-alpine
+
+ADD internet_generator.py .
+
+RUN pip install faker kafka-python
+
+ENV KAFKA_TOPIC=$KAFKA_TOPIC \
+	KAFKA_SERVER=$KAFKA_SERVER \
+	KAFKA_PORT=$KAFKA_PORT \
+	COOKIE_NUMBER=$COOKIE_NUMBER \
+	DOMAIN=$DOMAIN \
+	SLEEP_TIME=$SLEEP_TIME \
+	ROTATION_PROB=$ROTATION_PROB
+
+CMD python ./internet_generator.py ${KAFKA_SERVER} \
+	${KAFKA_PORT} \
+	${KAFKA_TOPIC} \
+	${COOKIE_NUMBER} \
+	${DOMAIN} \
+	${SLEEP_TIME} \
+	${ROTATION_PROB}
