@@ -1,0 +1,14 @@
+FROM python:3.10-slim
+RUN apt-get update && apt-get install --allow-unauthenticated --yes \
+           graphviz 
+
+RUN mkdir /diagrams
+WORKDIR diagrams
+
+RUN python3 -m pip install --upgrade pip
+RUN pip --no-cache-dir install  diagrams
+RUN pip --no-cache-dir install  graphviz
+RUN pip --no-cache-dir install  jupyter
+
+
+CMD jupyter notebook --no-browser --ip 0.0.0.0 --port 8888 --allow-root
