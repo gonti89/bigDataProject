@@ -128,24 +128,140 @@ Z powyższych testowych statystyk widać, że:
 Do analiz należy dane posegmentować na kilka zbiorów. Przy obecnym rozkładzie statystyk zdarzeń jedynym kandydatem do segmentowania są referery choć są one równoliczne (co może być przypadkiem testowych danych) i mogą być zbyt mało charakterystyczne. Wytypowano pole useragent jako to z którego można wydobyć dodatkowe bardziej ogólne informacje takie jak: typ urządzenia (PC, mobile itp), system operacyjny, rodzaj przeglądarki.  
  
 # 2.4 Generator
+Ponieważ nie udało się uzyskać realnych(zanonimizowanych) danych na temat ruchu portali internetowych zdecydowano na stworzenie modułu generującego takie dane w sposób losowy.[^2] Do tego zadania użyto biblioteki Faker[^3] oraz modułu random[^4] wbudowanego w język programowania Python.
+
+W pierwszym kroku generowane są następujace zbiory:
+ 
+ - parametrów do adresów url z przypisanymi parametrami 
+ - refererów
+ - par cookieID, userAgent (aby zapewnić niezmienialność stałe przypisanie)
+
+Każdy element z wyżej wymienionych zbiorów ma przypisane prawdopodobieństwo losowania, przy czym w obecnym rozwiazaniu parametery oraz referery posiadają różne ale stałe wartości a każdy cookies ma przypisane losowe prawdopodobieństwo.
+
+Poniżej fragmenty kodu odpowiedzialne za przygotowanie powyższych zbiorów 
+```python3
+def generateUniqueCookie(count=100):
+    fake = Faker()
+    return [fake.uuid4(cast_to=int) for _ in range(count)]
+
+
+def generateUserAgent(count=100):
+    fake = Faker()
+    return [fake.user_agent() for _ in range(count)]
+
+
+def getCookieUa(elemCount=10):
+    cookies = generateUniqueCookie(elemCount)
+    ua = generateUserAgent(elemCount)
+    activityLevel = [random.random() for _ in range(elemCount)]
+    cookie_ua_elements = [(x, y, z) for x, y, z in zip(cookies, ua, activityLevel)]
+    return cookie_ua_elements
+
+.....
+
+urlParamsOptions = OrderedDict([("", 0.8), ("?testVersion=a", 0.10), ("?testVersion=b", 0.10), ])
+refOptions = OrderedDict([("", 0.3), ("facebook.com", 0.10), ("google.com", 0.10), (domain, 0.50)])
+
+urlParams = fake.random_element(elements=urlParamsOptions)
+"referer": fake.random_element(elements=refOptions),
+                        
+
+```
+
+W drugim kroku generowane są zbiory testowych danych zdarzeń w nieskończonej pętli. Po każdym wylosowaniu cookiesa sprawdzamy czy przypisane do niego prawdopodobieństwo bycia aktywnym jest większe od losowej wartości z przedziału 0-1. Dzięki temu w sposób losowy różnicowany jest rozkład aktywności poszczególnych cookiesów oraz liczba zdarzeń nie jest identyczna dla każdej sekundy. Podczas generowania pojdyńczego zdarzenia sprawdzane jest również czy nie należy wykonać rotacji cookiesów (na podstawie wejściowego parametru obecnie ustawionego tak aby średnio raz na 5 minut następowała rotacja zbiorów). Do wykonania opisanej rotacji rozszerzono wbudowaną klasę DynamiProvider biblioteki Faker o nową metodą "replace_random_elements". Takie podejście zapewnia czytelny kod oraz możliwość zmiany logiki zmiany przygotowanej metody bez wpływu na główny kod generatora. 
+
+```python3
+class CookieUaProvider(DynamicProvider):
+    def __init__(self, provider_name, elements=None, generator=None, initElemCount=10):
+        super().__init__(provider_name, elements, generator)
+
+        if elements is None:
+            allElements = getCookieUa(elemCount=initElemCount * 10)
+            self.elements = self.random_sample(elements=allElements, length=initElemCount)
+
+        else:
+            assert len(elements) > 0
+            allElements = None
+            self.elements = elements
+
+        self.allElements = allElements
+
+    def replace_random_elements(self, replaceRate=0.2):
+        assert replaceRate < 1
+        assert replaceRate > 0
+
+        currentCount = len(self.elements)
+
+        length = int((1 - replaceRate) * currentCount)
+        notRemovedElements = self.random_sample(elements=self.elements, length=length)
+
+        newCount = currentCount - length
+        newElements = self.random_sample(elements=self.allElements, length=newCount)
+
+        self.elements = notRemovedElements + newElements  # elems are initilized in super class
+        print("replacedCookies")
+```
+
+[^2]:https://github.com/gonti89/bigDataProject/blob/main/generator/2.0/internet_generator.py
+[^3]:https://faker.readthedocs.io/en/master
+[^4]:https://docs.python.org/3/library/random.html
 
 
 \pagebreak
 
 # 3. Rozwiązanie koncepcyjne problemu biznsowego
- - zaproponować co można zmienić aby zrealizować cel główny
- -  zwiększenie ilości i zaangażowania użytkowników strony
- - odsłony
- - sesje
- - czas
- - podział na segmenty technicze (os, deviceType, Browser)
- - próba znalezienia odpowiedzi na pytanie jak zwiększyć liczbę użytkowników oraz ich zaangażowanie 
+Jak było wymienione we wstępie głównym zadaniem jest zdefiniowanie co wpływa na poziom ruchu na stronie oraz jakie zadania należy wykonać aby zwiększyć liczbę odsłon. Po wstępnej analizie testowego sampla danych widać, że liczba odsłon jest powiązana z dwoma aspektami:
+
+ - liczbą użytkowników (więcej użytkowników więcej odsłon)
+ - średnią liczbą odsłon wykonanych przez użytkownika.
+
+Można przeformułować powyższe punkty na następujące cele:
+
+ - (1) zwiększenie liczby nowych użytkowników korzystających z portalu
+ - (2) zwiększenie zaangażowania użytkowników już obecnych na portalu
+
+Do próby zrealizaowania powyższych celów podjęto decyzję o przygotowaniu następującyh danych:
+
+ - % udziału poszczególnych źródeł ruchu (1) - pomoże to odpowiedzieć na pytanie ile % które źródło ruchu generuje użytkowników. To z kolei wskaże klientowi, w które kanały warto inwestować pod względem reklamowym
+ - segmentacja obecnych użytkowników ze względu na typ używanych urzadzeń (1) - pomoże to odpowiedzieć na pytanie czy są jakieś grupy użytkowników szczególnie zainteresowane treścią portalu lub czy któregoś segmentu popularnego w populacji internautów brakuje na stronie
+ - rozkład sesji oraz czasu spędzonego na portalu przez obecnych użytkowników (2) - pomoże to odpowiedzieć na pytanie jak użytkownicy korzystają z portalu i czy można w jakiś sposób zachęcić ich do dłuższego kontatku ze stroną
+ - ranking top 10 stron z największą liczbą odsłon (2) - wskaże to klientowi informację jakie treści generują dużo zdarzeń.
+
+Dane te powinny być dostępne w postaci dashboardu, który będzie się aktualizował w czasie prawie rzeczywistym. Takie podejście pozwoli monitorować obecną sytuację oraz w razie zmian na portalu na bierząco obserwować zmiany.
+
+
 
 \pagebreak
 
 # 4. Model danych
- - tabela eventów
- - tabela sesji
+
+Aby przygotować potrzebne podsumowania należy z surowego zestawu danych stworzyć nowy zestaw danych. Po pierwsze należy zanonimizować adres IP. Wybrano opcje usunięcia ostatnio oktetu. Aby nie tracić kompletenie informacji na temat cech poszczególnych IP postanowiono wykonać hash  z tego pola, tak aby nowa wartość nie pozwalała na potencjalne użytkowników ale jednocześnie zachowywała różnorodność danych źródłowych. Po drugie postanowiono wzbogacić każde zdarzenie o dodatkowe informacje pochodzące z user agenta: system operacyjny, typ urządzenia, rodzaj przeglądarki. Informacje te pozwolą na wykonanie dodatkowych segmentacji. Po trzecie na podstawie zdarzeń postanowiono zbudować sesje użytkowników. Sesje, czy też inaczej nazywane wizyty, to ciąg odsłon wykonanych przez danego użytkownika na danej domenie nie wiekszą przerwą niż pewien zdefiniowany czas pomiędzy kolejnymi odsłonami. Wg definicji[^5] firmy analitycznej google.com przerwa ta jest nie większa niż 30 minut. Po konsultacjach z klientem uznano jednak, że na potrzeby analiz przyjęta zostanie przerwa wynosząca 5 minut.
+
+Z surowych danych:
+
+|time   |cookieID|userAgent|url   |referer|ip    | 
+|-------|--------|---------|------|-------|------|
+|INTEGER|STRING  | STRING  |STRING|STRING |STRING|
+
+
+Zostaną utworzone dwie tabele:
+ 
+ - tabela zdarzeń wzbogacone o nowe dodatkowe informacje
+
+|time   |cookieID|userAgent|url   |referer|ipHash |shortIP |deviceType|os    |browser| 
+|-------|--------|---------|------|-------|-------|--------|----------|------|-------|
+|INTEGER|INTEGER  | STRING  |STRING|STRING |INTEGER|STRING  |STRING    |STRING|STRING |
+
+ - oraz tabela sesji
+
+|cookieID|deviceType|os    |browser|start|end|duration|uniqueUrlCount| 
+|--------|----------|------|-------|------------|----------|---------------|---------------------|
+|INTEGER | STRING   |STRING|STRING |INTEGER     |INTEGER   |INTEGER        |INTEGER              |
+
+Tabele są niezależne, mimo iż teoretycznie za pomocą pola cookieID możliwe byłoby łączenie.
+
+
+[^5]:https://support.google.com/analytics/answer/2731565?hl=en#overview&zippy=%2Cin-this-article
 
 \pagebreak
 
