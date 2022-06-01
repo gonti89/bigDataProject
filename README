@@ -1,3 +1,14 @@
-#metabase
-mail: admin@admin.pl
-pass: Admin1234
+# docker images to generate before run system : directory:imageNama
+genertor: generator/internet_generator:2.0
+general_docker_files: py_spark_base
+preprocessig: preprocessing:2.0
+processing: processing:2.0
+project_description/schemas: diagrams
+project_description: pandocker-pl
+
+# project documentation generation
+cd project_description
+(ver=ver1.6; docker run --rm -u `id -u`:`id -g` --volume "`pwd`:/pandoc"  pandocker-pl  ${ver}.md -o ${ver}.pdf --template eisvogel -V lang=pl --highlight-style=haddock)
+
+# local deploy command
+ docker-compose -f docker-compose/docker-compose.2.0.yml up
