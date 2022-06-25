@@ -12,3 +12,8 @@ cd project_description
 
 # local deploy command
  docker-compose -f docker-compose/docker-compose.2.0.yml up
+
+#metabase dashboard access
+mail: admin@admin.pl
+pass: Admin1234
+
