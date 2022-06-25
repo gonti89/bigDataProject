@@ -500,6 +500,8 @@ Wnioski te wraz z propozycją konstrukcji systemu zostały przedstawione kliento
 
 Wszystkie kody źródłowe projektu (moduły, dokumentacja, schematy) dostępne są w repozytorium na github: https://github.com/gonti89/bigDataProject
 
+\pagebreak
+
 # 7. Możliwe drogi rozwoju systemu
 
 W planach jest rozszerzenie systemu o:
