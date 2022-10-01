@@ -1,3 +1,4 @@
+![alt text](https://github.com/gonti89/bigDataProject/blob/main/project_description/schemas/diagrams_image.png?raw=true)
 # docker images to generate before run system : directory:imageNama
 genertor: generator/internet_generator:2.0
 general_docker_files: py_spark_base
